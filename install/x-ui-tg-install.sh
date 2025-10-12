@@ -36,8 +36,26 @@ cat <<EOF > "$CONFIG_FILE"
 }
 EOF
 
-apt update -y && apt install -y python3 python3-pip jq sqlite3 whiptail >/dev/null
-pip3 install -r "$BOT_DIR/install/requirements.txt" >/dev/null
+# ===========================
+# INSTALL SYSTEM DEPENDENCIES
+# ===========================
+echo "📦 Installing system packages..."
+apt update -y >/dev/null
+apt install -y python3 python3-pip jq sqlite3 whiptail >/dev/null
+
+
+# ===========================
+# INSTALL PYTHON DEPENDENCIES
+# ===========================
+echo "📦 Installing Python dependencies..."
+if [ -f "$BOT_DIR/install/requirements.txt" ]; then
+    pip3 install -r "$BOT_DIR/install/requirements.txt" >/dev/null
+else
+    echo "⚠️ requirements.txt not found, installing minimal set..."
+    pip3 install aiogram apscheduler psutil >/dev/null
+fi
+echo "✅ Python dependencies installed successfully."
+
 
 cat <<EOF > "$SERVICE_FILE"
 [Unit]
