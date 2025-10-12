@@ -11,7 +11,16 @@ if systemctl is-active --quiet xui-tg-bot; then
 fi
 
 mkdir -p "$BOT_DIR/config"
-cp -r ../bot ../install ../config ../docs "$BOT_DIR" 2>/dev/null || true
+
+# Download latest files directly from GitHub
+echo "📥 Downloading bot files from GitHub..."
+rm -rf "$BOT_DIR"
+mkdir -p "$BOT_DIR"
+curl -L https://github.com/MasterHide/xui-tg-bot/archive/refs/heads/main.zip -o /tmp/xui-tg-bot.zip
+apt install -y unzip >/dev/null 2>&1
+unzip -q /tmp/xui-tg-bot.zip -d /tmp
+mv /tmp/xui-tg-bot-main/* "$BOT_DIR"/
+rm -rf /tmp/xui-tg-bot.zip /tmp/xui-tg-bot-main
 
 echo "🔹 Enter Telegram Bot Token:"
 read -p "> " TOKEN
