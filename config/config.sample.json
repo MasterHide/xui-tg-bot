@@ -1,0 +1,6 @@
+{
+  "telegram_token": "YOUR_BOT_TOKEN",
+  "admin_ids": [123456789],
+  "db_path": "/etc/x-ui/x-ui.db",
+  "log_path": "/var/log/xui-tg-bot.log"
+}
