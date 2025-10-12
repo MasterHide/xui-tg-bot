@@ -45,10 +45,14 @@ Description=XUI Telegram Bot
 After=network.target
 
 [Service]
-ExecStart=$PYTHON $BOT_DIR/bot/bot.py
+Type=simple
+WorkingDirectory=/opt/xui-tg-bot
+ExecStart=/usr/bin/python3 /opt/xui-tg-bot/bot/xui_bot.py
 Restart=always
-WorkingDirectory=$BOT_DIR
+RestartSec=5
 User=root
+StandardOutput=append:/var/log/xui-tg-bot.log
+StandardError=append:/var/log/xui-tg-bot.log
 
 [Install]
 WantedBy=multi-user.target
