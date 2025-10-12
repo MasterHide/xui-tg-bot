@@ -3,7 +3,7 @@ Description=XUI Telegram Bot
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /opt/xui-tg-bot/bot/bot.py
+ExecStart=/usr/bin/python3 /opt/xui-tg-bot/bot/xui-bot.py
 Restart=always
 WorkingDirectory=/opt/xui-tg-bot
 User=root
