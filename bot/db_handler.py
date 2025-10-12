@@ -1,5 +1,5 @@
 import sqlite3, json, logging
-from bot.config_loader import load_config
+from config_loader import load_config
 
 def toggle_user(email, state: bool):
     cfg = load_config()
