@@ -51,13 +51,16 @@ async def start_handler(message: types.Message):
         return
 
     await message.reply(
-        "👋 Welcome, Admin!\n\n"
-        "✅ Your bot is online and connected.\n"
-        "You can now control users with:\n"
-        "`/user <email>`\n\n"
-        "Example:\n"
+        "👋 **Welcome, Admin!**\n\n"
+        "✅ Your bot is *online* and connected to Telegram.\n\n"
+        "Here’s what I can do for you:\n"
+        "• `/user <email>` — Manage (enable/disable) users\n"
+        "• `/status` — Check server performance & XUI info\n"
+        "• `/id` — Show your Telegram ID\n"
+        "• `/help` — Show all available commands\n\n"
+        "💡 *Example:*\n"
         "`/user alice@example.com`\n\n"
-        "This will open the control panel for enabling or disabling that user.",
+        "🛠 Use the menu below or type any command to begin.",
         parse_mode="Markdown"
     )
 
@@ -141,6 +144,27 @@ async def status_handler(message: types.Message):
     await message.reply(status_msg, parse_mode="Markdown")
 
 
+@dp.message(Command("help"))
+async def help_handler(message: types.Message):
+    """Show help text and usage examples"""
+    await message.reply(
+        "📘 **Available Commands:**\n\n"
+        "/start - Show the main menu\n"
+        "/status - Check bot/server status\n"
+        "/id - Show your Telegram ID\n"
+        "/user <email> - Manage a user (admin only)\n\n"
+        "Example:\n`/user alice@example.com`",
+        parse_mode="Markdown"
+    )
+
+
+@dp.message(Command("id"))
+async def id_handler(message: types.Message):
+    """Show your Telegram ID"""
+    await message.reply(f"🆔 Your Telegram ID: `{message.from_user.id}`", parse_mode="Markdown")
+
+
+
 # ===========================
 # BUTTON HANDLERS (Enable/Disable)
 # ===========================
@@ -193,6 +217,18 @@ async def actions(query: types.CallbackQuery):
         )
 
 
+async def set_bot_commands(bot: Bot):
+    """Register visible commands for Telegram's sidebar menu"""
+    commands = [
+        types.BotCommand(command="start", description="Show the main menu"),
+        types.BotCommand(command="help", description="Bot help and usage guide"),
+        types.BotCommand(command="status", description="Check bot/server status"),
+        types.BotCommand(command="id", description="Show your Telegram ID"),
+        types.BotCommand(command="user", description="Manage a user (admin only)"),
+    ]
+    await bot.set_my_commands(commands)
+
+
 # ===========================
 # MAIN ENTRY POINT
 # ===========================
@@ -201,7 +237,8 @@ async def main():
     logging.info("🚀 XUI Telegram Bot starting...")
     scheduler.start()
     logging.info("Scheduler started")
-    logging.info("Start polling")
+    await set_bot_commands(bot)  # 👈 This line registers the command list
+    logging.info("Bot commands registered")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
