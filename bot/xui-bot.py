@@ -7,9 +7,11 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from bot.db_handler import toggle_user
-from bot.config_loader import load_config
-from bot.menu import main_menu
+from db_handler import toggle_user
+from config_loader import load_config
+from utils import *  # (optional, if used anywhere)
+from scheduler import scheduler  # if referenced
+from x_ui_menu import main_menu  # fix name to match your file
 
 
 # ===========================
