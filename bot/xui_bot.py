@@ -173,29 +173,48 @@ async def id_handler(message: types.Message):
 async def actions(query: types.CallbackQuery):
     """Handle inline buttons (enable/disable)"""
     action, email = query.data.split("|")
+    admin_id = query.from_user.id
 
-    # Remove any existing scheduled re-enable job for this user
+    # Check existing job
     for job in scheduler.get_jobs():
         if job.id == f"reenable_{email}":
             scheduler.remove_job(job.id)
             logging.info(f"[SCHEDULER] Removed old job for {email}")
 
+    # --- ACTION: ENABLE USER ---
     if action == "enable":
-        # Manual re-enable
-        toggle_user(email, True)
-        logging.info(f"[MANUAL ENABLE] {email} re-enabled by admin {query.from_user.id}")
+        result = toggle_user(email, True)
 
+        if not result:
+            logging.warning(f"User {email} not found.")
+            await query.message.edit_text(
+                f"⚠️ `{email}` not found in database — cannot enable.",
+                parse_mode="Markdown"
+            )
+            return
+
+        logging.info(f"[MANUAL ENABLE] {email} re-enabled by admin {admin_id}")
         await query.message.edit_text(
-            f"✅ `{email}` has been manually re-enabled.",
+            f"🔓 `{email}` has been *manually re-enabled* ✅",
             parse_mode="Markdown"
         )
+        return
 
+    # --- ACTION: DISABLE USER ---
     elif action == "disable":
-        # Disable user immediately
-        toggle_user(email, False)
-        logging.info(f"[TEMP DISABLE] {email} disabled by admin {query.from_user.id}")
+        result = toggle_user(email, False)
 
-        # Schedule automatic re-enable after 24 hours
+        if not result:
+            logging.warning(f"User {email} not found.")
+            await query.message.edit_text(
+                f"⚠️ `{email}` not found in database — cannot disable.",
+                parse_mode="Markdown"
+            )
+            return
+
+        logging.info(f"[TEMP DISABLE] {email} disabled by admin {admin_id}")
+
+        # Schedule re-enable job (24h)
         run_time = datetime.now() + timedelta(hours=24)
         scheduler.add_job(
             toggle_user,
@@ -207,7 +226,6 @@ async def actions(query: types.CallbackQuery):
             misfire_grace_time=3600,
             name=f"AutoReEnable_{email}"
         )
-
         logging.info(f"[SCHEDULER] Auto re-enable for {email} scheduled at {run_time}")
 
         await query.message.edit_text(
