@@ -45,16 +45,37 @@ apt install -y python3 python3-pip jq sqlite3 whiptail >/dev/null
 
 
 # ===========================
-# INSTALL PYTHON DEPENDENCIES
+# INSTALL PYTHON DEPENDENCIES (Auto handles Ubuntu 22.04 & 24.04+)
 # ===========================
 echo "📦 Installing Python dependencies..."
-if [ -f "$BOT_DIR/install/requirements.txt" ]; then
-    pip3 install -r "$BOT_DIR/install/requirements.txt" >/dev/null
+
+# Detect Ubuntu version (major only, e.g. 22 or 24)
+UBUNTU_VERSION=$(lsb_release -rs | cut -d'.' -f1)
+
+# For Ubuntu 24+ use venv (PEP 668 safe), for older use normal pip
+if [ "$UBUNTU_VERSION" -ge 24 ]; then
+    echo "🧩 Detected Ubuntu $UBUNTU_VERSION — using virtual environment for safety..."
+    VENV_DIR="$BOT_DIR/venv"
+    python3 -m venv "$VENV_DIR"
+    source "$VENV_DIR/bin/activate"
+    pip install --upgrade pip >/dev/null
+    if [ -f "$BOT_DIR/install/requirements.txt" ]; then
+        pip install -r "$BOT_DIR/install/requirements.txt" >/dev/null
+    else
+        pip install aiogram apscheduler psutil >/dev/null
+    fi
+    deactivate
+    echo "✅ Python dependencies installed in venv ($VENV_DIR)"
 else
-    echo "⚠️ requirements.txt not found, installing minimal set..."
-    pip3 install aiogram apscheduler psutil >/dev/null
+    echo "🧩 Detected Ubuntu $UBUNTU_VERSION — installing globally..."
+    if [ -f "$BOT_DIR/install/requirements.txt" ]; then
+        pip3 install -r "$BOT_DIR/install/requirements.txt" >/dev/null
+    else
+        pip3 install aiogram apscheduler psutil >/dev/null
+    fi
+    echo "✅ Python dependencies installed globally."
 fi
-echo "✅ Python dependencies installed successfully."
+
 
 
 cat <<EOF > "$SERVICE_FILE"
@@ -65,7 +86,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/xui-tg-bot
-ExecStart=/usr/bin/python3 /opt/xui-tg-bot/bot/xui_bot.py
+ExecStart=$BOT_DIR/venv/bin/python /opt/xui-tg-bot/bot/xui_bot.py
 Restart=always
 RestartSec=5
 User=root
