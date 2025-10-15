@@ -30,3 +30,24 @@ Designed for reliability, speed, and zero bloat.
 
 
 
+
+A fully automated **Telegram Bot** for X-UI management, auto-banning, and monitoring — designed for VPS automation under **A-M-S Tools**.
+
+---
+
+## ⚙️ Supported Ubuntu Versions
+
+| Ubuntu Version | Status | Notes |
+|----------------|:------:|-------|
+| 🟢 **22.04 LTS (Jammy Jellyfish)** | ✅ Supported | Installs directly using `pip3` |
+| 🟢 **23.10 (Mantic Minotaur)** | ✅ Supported | Auto-handled via version detection |
+| 🟢 **24.04 LTS (Noble Numbat)** | ✅ Supported | Uses isolated Python virtual environment (PEP 668 compliant) |
+| ⚪ Older than 22.04 | ⚠️ Not tested | May work but unsupported officially |
+
+---
+
+❤️ Credits
+
+💡 Developed by Mishwo (MasterHide)
+
+🧰 Part of the A-M-S Tool Suite
