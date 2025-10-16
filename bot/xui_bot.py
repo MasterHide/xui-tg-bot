@@ -182,7 +182,7 @@ async def actions(query: types.CallbackQuery):
             logging.info(f"[SCHEDULER] Removed old job for {email}")
 
     # --- ACTION: ENABLE USER ---
-    if action == "Trun On":
+    if action == "enable":
         result = toggle_user(email, True)
 
         if not result:
@@ -201,7 +201,7 @@ async def actions(query: types.CallbackQuery):
         return
 
     # --- ACTION: DISABLE USER ---
-    elif action == "Trun Off":
+    elif action == "disable":
         result = toggle_user(email, False)
 
         if not result:
