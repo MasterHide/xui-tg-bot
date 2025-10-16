@@ -66,7 +66,7 @@ install_packages() {
 if [ "$UBUNTU_VERSION" -ge 24 ]; then
     echo "🧩 Detected Ubuntu $UBUNTU_VERSION — using virtual environment for safety..."
     
-    # Always recreate venv if missing (after uninstall)
+    # Ensure venv exists (after uninstall or first install)
     if [ ! -d "$VENV_DIR" ]; then
         python3 -m venv "$VENV_DIR"
     fi
@@ -86,6 +86,7 @@ fi
 
 
 
+
 cat <<EOF > "$SERVICE_FILE"
 [Unit]
 Description=XUI Telegram Bot
@@ -94,7 +95,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/xui-tg-bot
-ExecStart=$BOT_DIR/venv/bin/python /opt/xui-tg-bot/bot/xui_bot.py
+ExecStart=/bin/bash -c "source /opt/xui-tg-bot/venv/bin/activate && python /opt/xui-tg-bot/bot/xui_bot.py"
 Restart=always
 RestartSec=5
 User=root
