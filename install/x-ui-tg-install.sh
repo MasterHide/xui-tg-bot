@@ -51,28 +51,35 @@ echo "📦 Installing Python dependencies..."
 
 # Detect Ubuntu version (major only, e.g. 22 or 24)
 UBUNTU_VERSION=$(lsb_release -rs | cut -d'.' -f1)
+VENV_DIR="$BOT_DIR/venv"
+REQ_FILE="$BOT_DIR/install/requirements.txt"
 
-# For Ubuntu 24+ use venv (PEP 668 safe), for older use normal pip
+# Function to install packages
+install_packages() {
+    if [ -f "$REQ_FILE" ]; then
+        pip install -r "$REQ_FILE"
+    else
+        pip install aiogram apscheduler psutil
+    fi
+}
+
 if [ "$UBUNTU_VERSION" -ge 24 ]; then
     echo "🧩 Detected Ubuntu $UBUNTU_VERSION — using virtual environment for safety..."
-    VENV_DIR="$BOT_DIR/venv"
-    python3 -m venv "$VENV_DIR"
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade pip >/dev/null
-    if [ -f "$BOT_DIR/install/requirements.txt" ]; then
-        pip install -r "$BOT_DIR/install/requirements.txt" >/dev/null
-    else
-        pip install aiogram apscheduler psutil >/dev/null
+    
+    # Create venv if missing
+    if [ ! -d "$VENV_DIR" ]; then
+        python3 -m venv "$VENV_DIR"
     fi
+    
+    source "$VENV_DIR/bin/activate"
+    pip install --upgrade pip
+    install_packages
     deactivate
     echo "✅ Python dependencies installed in venv ($VENV_DIR)"
 else
     echo "🧩 Detected Ubuntu $UBUNTU_VERSION — installing globally..."
-    if [ -f "$BOT_DIR/install/requirements.txt" ]; then
-        pip3 install -r "$BOT_DIR/install/requirements.txt" >/dev/null
-    else
-        pip3 install aiogram apscheduler psutil >/dev/null
-    fi
+    pip3 install --upgrade pip
+    install_packages
     echo "✅ Python dependencies installed globally."
 fi
 
