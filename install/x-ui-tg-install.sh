@@ -66,7 +66,7 @@ install_packages() {
 if [ "$UBUNTU_VERSION" -ge 24 ]; then
     echo "🧩 Detected Ubuntu $UBUNTU_VERSION — using virtual environment for safety..."
     
-    # Create venv if missing
+    # Always recreate venv if missing (after uninstall)
     if [ ! -d "$VENV_DIR" ]; then
         python3 -m venv "$VENV_DIR"
     fi
@@ -82,6 +82,7 @@ else
     install_packages
     echo "✅ Python dependencies installed globally."
 fi
+
 
 
 
