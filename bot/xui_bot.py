@@ -153,7 +153,7 @@ async def help_handler(message: types.Message):
         "/system - Check bot/server status\n"
         "/whoami - Show your Telegram ID\n"
         "/account <email> - check a user (admin only)\n\n"
-        "Example:\n`/user alice@example.com`",
+        "Example:\n`/account alice@example.com`",
         parse_mode="Markdown"
     )
 
@@ -182,7 +182,7 @@ async def actions(query: types.CallbackQuery):
             logging.info(f"[SCHEDULER] Removed old job for {email}")
 
     # --- ACTION: ENABLE USER ---
-    if action == "enable":
+    if action == "Trun On":
         result = toggle_user(email, True)
 
         if not result:
@@ -201,7 +201,7 @@ async def actions(query: types.CallbackQuery):
         return
 
     # --- ACTION: DISABLE USER ---
-    elif action == "disable":
+    elif action == "Trun Off":
         result = toggle_user(email, False)
 
         if not result:
