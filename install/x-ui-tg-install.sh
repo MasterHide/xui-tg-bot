@@ -63,27 +63,31 @@ install_packages() {
     fi
 }
 
+# ---------------------------
+# Ensure venv exists and install dependencies
+# ---------------------------
 if [ "$UBUNTU_VERSION" -ge 24 ]; then
-    echo "🧩 Detected Ubuntu $UBUNTU_VERSION — using virtual environment for safety..."
-    
-    # Ensure venv exists (after uninstall or first install)
+    echo "🧩 Detected Ubuntu $UBUNTU_VERSION — using virtual environment..."
+
+    # Create venv if missing (or after uninstall)
     if [ ! -d "$VENV_DIR" ]; then
+        echo "🛠 Creating virtual environment..."
         python3 -m venv "$VENV_DIR"
     fi
-    
+
+    # Activate venv and install packages
     source "$VENV_DIR/bin/activate"
     pip install --upgrade pip
     install_packages
     deactivate
     echo "✅ Python dependencies installed in venv ($VENV_DIR)"
+
 else
     echo "🧩 Detected Ubuntu $UBUNTU_VERSION — installing globally..."
     pip3 install --upgrade pip
     install_packages
     echo "✅ Python dependencies installed globally."
 fi
-
-
 
 
 
