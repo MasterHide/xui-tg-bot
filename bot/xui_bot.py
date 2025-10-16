@@ -43,7 +43,7 @@ logging.basicConfig(
 async def start_handler(message: types.Message):
     if message.from_user.id not in cfg["admin_ids"]:
         await message.reply(
-            "👋 Hello! I’m your XUI management bot.\n\n"
+            "👋 Hello! I’m your X-UI  bot.\n\n"
             "🚫 You are *not authorized* to use admin functions.\n"
             "Please contact your server administrator for access.",
             parse_mode="Markdown"
@@ -54,30 +54,30 @@ async def start_handler(message: types.Message):
         "👋 **Welcome, Admin!**\n\n"
         "✅ Your bot is *online* and connected to Telegram.\n\n"
         "Here’s what I can do for you:\n"
-        "• `/user <email>` — Manage (enable/disable) users\n"
-        "• `/status` — Check server performance & XUI info\n"
-        "• `/id` — Show your Telegram ID\n"
+        "• `/account <email>` — check users\n"
+        "• `/system` — Check server performance & XUI info\n"
+        "• `/whoami` — Show your Telegram ID\n"
         "• `/help` — Show all available commands\n\n"
         "💡 *Example:*\n"
-        "`/user alice@example.com`\n\n"
+        "`/account alice@example.com`\n\n"
         "🛠 Use the menu below or type any command to begin.",
         parse_mode="Markdown"
     )
 
 
-@dp.message(Command("user"))
+@dp.message(Command("account"))
 async def handle_user(message: types.Message):
-    """Handle /user <email> command from admin"""
+    """Handle /account <email> command from admin"""
     if message.from_user.id not in cfg["admin_ids"]:
         return await message.reply("❌ Unauthorized")
 
     try:
         email = message.text.split(maxsplit=1)[1].strip()
     except IndexError:
-        return await message.reply("⚠️ Usage: /user <email>")
+        return await message.reply("⚠️ Usage: /account <email>")
 
     await message.reply(
-        f"🔍 Managing user `{email}`",
+        f"🔍 Checking account `{email}`",
         parse_mode="Markdown",
         reply_markup=main_menu(email)
     )
@@ -90,9 +90,9 @@ async def handle_user(message: types.Message):
 import os, time, psutil, sqlite3
 from datetime import datetime, timedelta
 
-@dp.message(Command("status"))
+@dp.message(Command("system"))
 async def status_handler(message: types.Message):
-    """Show XUI and system status summary"""
+    """Show XUI and system system summary"""
     if message.from_user.id not in cfg["admin_ids"]:
         return await message.reply("❌ Unauthorized")
 
@@ -138,7 +138,7 @@ async def status_handler(message: types.Message):
         f"⚙️ *CPU Usage:* {cpu_usage}%\n\n"
         f"🌐 *Inbounds:* {total_inbounds}\n"
         f"👥 *Clients:* {total_clients}\n\n"
-        f"✅ Use `/user <email>` to manage a client."
+        f"✅ Use `/account <email>` to see."
     )
 
     await message.reply(status_msg, parse_mode="Markdown")
@@ -150,15 +150,15 @@ async def help_handler(message: types.Message):
     await message.reply(
         "📘 **Available Commands:**\n\n"
         "/start - Show the main menu\n"
-        "/status - Check bot/server status\n"
-        "/id - Show your Telegram ID\n"
-        "/user <email> - Manage a user (admin only)\n\n"
+        "/system - Check bot/server status\n"
+        "/whoami - Show your Telegram ID\n"
+        "/account <email> - check a user (admin only)\n\n"
         "Example:\n`/user alice@example.com`",
         parse_mode="Markdown"
     )
 
 
-@dp.message(Command("id"))
+@dp.message(Command("whoami"))
 async def id_handler(message: types.Message):
     """Show your Telegram ID"""
     await message.reply(f"🆔 Your Telegram ID: `{message.from_user.id}`", parse_mode="Markdown")
@@ -171,7 +171,7 @@ async def id_handler(message: types.Message):
 
 @dp.callback_query()
 async def actions(query: types.CallbackQuery):
-    """Handle inline buttons (enable/disable)"""
+    """Handle inline buttons (ON/OFF)"""
     action, email = query.data.split("|")
     admin_id = query.from_user.id
 
@@ -186,16 +186,16 @@ async def actions(query: types.CallbackQuery):
         result = toggle_user(email, True)
 
         if not result:
-            logging.warning(f"User {email} not found.")
+            logging.warning(f"account {email} not found.")
             await query.message.edit_text(
-                f"⚠️ `{email}` not found in database — cannot enable.",
+                f"⚠️ `{email}` not found in database — cannot On.",
                 parse_mode="Markdown"
             )
             return
 
-        logging.info(f"[MANUAL ENABLE] {email} re-enabled by admin {admin_id}")
+        logging.info(f"[MANUAL ENABLE] {email} access restored by admin {admin_id}")
         await query.message.edit_text(
-            f"🔓 `{email}` has been *manually re-enabled* ✅",
+            f"🔓 `{email}` has been *manually access restored* ✅",
             parse_mode="Markdown"
         )
         return
@@ -205,14 +205,14 @@ async def actions(query: types.CallbackQuery):
         result = toggle_user(email, False)
 
         if not result:
-            logging.warning(f"User {email} not found.")
+            logging.warning(f"account {email} not found.")
             await query.message.edit_text(
-                f"⚠️ `{email}` not found in database — cannot disable.",
+                f"⚠️ `{email}` not found in database — cannot Off.",
                 parse_mode="Markdown"
             )
             return
 
-        logging.info(f"[TEMP DISABLE] {email} disabled by admin {admin_id}")
+        logging.info(f"[TEMP DISABLE] {email} Off by admin {admin_id}")
 
         # Schedule re-enable job (24h)
         run_time = datetime.now() + timedelta(hours=24)
@@ -226,11 +226,11 @@ async def actions(query: types.CallbackQuery):
             misfire_grace_time=3600,
             name=f"AutoReEnable_{email}"
         )
-        logging.info(f"[SCHEDULER] Auto re-enable for {email} scheduled at {run_time}")
+        logging.info(f"[SCHEDULER] A access restored for {email}  at {run_time}")
 
         await query.message.edit_text(
-            f"🚫 `{email}` disabled for 24 hours.\n\n"
-            f"🕒 Auto re-enable scheduled for *{run_time.strftime('%Y-%m-%d %H:%M:%S')}*.",
+            f"🚫 `{email}` Off for 24 .\n\n"
+            f"🕒 A access for *{run_time.strftime('%Y-%m-%d %H:%M:%S')}*.",
             parse_mode="Markdown"
         )
 
@@ -240,9 +240,9 @@ async def set_bot_commands(bot: Bot):
     commands = [
         types.BotCommand(command="start", description="Show the main menu"),
         types.BotCommand(command="help", description="Bot help and usage guide"),
-        types.BotCommand(command="status", description="Check bot/server status"),
-        types.BotCommand(command="id", description="Show your Telegram ID"),
-        types.BotCommand(command="user", description="Manage a user (admin only)"),
+        types.BotCommand(command="system", description="Check bot/server status"),
+        types.BotCommand(command="whoami", description="Show your Telegram ID"),
+        types.BotCommand(command="account", description="M-U (admin only)"),
     ]
     await bot.set_my_commands(commands)
 
