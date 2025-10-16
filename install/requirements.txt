@@ -1,3 +1,7 @@
 aiogram
 apscheduler
 psutil
+aiofiles
+pydantic
+aiohttp
+typing-extensions
