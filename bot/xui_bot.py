@@ -65,20 +65,25 @@ async def start_handler(message: types.Message):
 
 @dp.message(Command("account"))
 async def handle_user(message: types.Message):
-    """Handle /account <email> command from admin"""
+    """
+    Show all temporarily stopped users and their re-enable times.
+    """
     if message.from_user.id not in cfg["admin_ids"]:
         return await message.reply("❌ Unauthorized")
 
-    try:
-        email = message.text.split(maxsplit=1)[1].strip()
-    except IndexError:
-        return await message.reply("⚠️ Usage: /account <email>")
+    jobs = scheduler.get_jobs()
+    if not jobs:
+        return await message.reply("✅ No users are currently stopped.")
 
-    await message.reply(
-        f"🔍 Checking account `{email}`",
-        parse_mode="Markdown",
-        reply_markup=main_menu(email)
-    )
+    msg = "🚫 **Temporarily Stopped Users:**\n\n"
+    for job in jobs:
+        if job.id.startswith("reenable_"):
+            email = job.id.replace("reenable_", "")
+            run_time = job.next_run_time.strftime("%Y-%m-%d %H:%M:%S")
+            msg += f"• `{email}` → restores at `{run_time}`\n"
+
+    await message.reply(msg, parse_mode="Markdown")
+
 
 
 # ===========================
