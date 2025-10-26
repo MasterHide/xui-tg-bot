@@ -13,10 +13,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from db_handler import toggle_user
 from config_loader import load_config
-from utils import *  # optional
+from utils import parse_duration
 from scheduler import scheduler  
 from x_ui_menu import main_menu  
-
 
 # ===========================
 # INITIALIZATION
@@ -25,25 +24,23 @@ from x_ui_menu import main_menu
 cfg = load_config()
 bot = Bot(cfg["telegram_token"])
 dp = Dispatcher()
-scheduler = AsyncIOScheduler()
 
+# ✅ use shared scheduler only (do NOT reinitialize)
 logging.basicConfig(
     filename=cfg["log_path"],
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-
 # ===========================
 # COMMAND HANDLERS
 # ===========================
-
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
     if message.from_user.id not in cfg["admin_ids"]:
         await message.reply(
-            "👋 Hello! I’m your X-UI  bot.\n\n"
+            "👋 Hello! I’m your X-UI bot.\n\n"
             "🚫 You are *not authorized* to use admin functions.\n"
             "Please contact your server administrator for access.",
             parse_mode="Markdown"
@@ -54,7 +51,8 @@ async def start_handler(message: types.Message):
         "👋 **Welcome, Admin!**\n\n"
         "✅ Your bot is *online* and connected to Telegram.\n\n"
         "Here’s what I can do for you:\n"
-        "• `/account <email>` — check users\n"
+        "• `/account <email>` — Check users\n"
+        "• `/stop <email> <time>` — Temporarily stop user (e.g., 30m, 2h, 1d)\n"
         "• `/system` — Check server performance & XUI info\n"
         "• `/whoami` — Show your Telegram ID\n"
         "• `/help` — Show all available commands\n\n"
@@ -84,11 +82,53 @@ async def handle_user(message: types.Message):
 
 
 # ===========================
-# STATUS COMMAND HANDLER
+# CUSTOM STOP (BAN) COMMAND
 # ===========================
 
-import os, time, psutil, sqlite3
-from datetime import datetime, timedelta
+@dp.message(Command("stop"))
+async def stop_user(message: types.Message):
+    """
+    Temporarily disable a user (with custom duration)
+    Usage: /stop <email> <duration> (e.g. /stop alice@example.com 2h)
+    """
+    if message.from_user.id not in cfg["admin_ids"]:
+        return await message.reply("❌ Unauthorized")
+
+    try:
+        _, email, duration_str = message.text.split(maxsplit=2)
+    except ValueError:
+        return await message.reply("⚠️ Usage: /stop <email> <duration> (e.g. 30m, 2h, 1d)")
+
+    delta = parse_duration(duration_str)
+
+    result = toggle_user(email, False)
+    if not result:
+        logging.warning(f"[STOP] Account {email} not found.")
+        return await message.reply(f"⚠️ `{email}` not found in database.", parse_mode="Markdown")
+
+    run_time = datetime.now() + delta
+    scheduler.add_job(
+        toggle_user,
+        trigger="date",
+        id=f"reenable_{email}",
+        run_date=run_time,
+        args=[email, True],
+        replace_existing=True,
+        misfire_grace_time=3600,
+        name=f"AutoReEnable_{email}"
+    )
+
+    logging.info(f"[STOP] {email} disabled for {duration_str}, will re-enable at {run_time}")
+    await message.reply(
+        f"🚫 `{email}` stopped for *{duration_str}*.\n\n"
+        f"🕒 Access will restore automatically at *{run_time.strftime('%Y-%m-%d %H:%M:%S')}*.",
+        parse_mode="Markdown"
+    )
+
+
+# ===========================
+# STATUS COMMAND HANDLER
+# ===========================
 
 @dp.message(Command("system"))
 async def status_handler(message: types.Message):
@@ -96,17 +136,14 @@ async def status_handler(message: types.Message):
     if message.from_user.id not in cfg["admin_ids"]:
         return await message.reply("❌ Unauthorized")
 
-    # --- 1️⃣ Get system stats ---
     uptime_seconds = time.time() - psutil.boot_time()
     uptime_str = str(timedelta(seconds=int(uptime_seconds)))
     cpu_usage = psutil.cpu_percent(interval=0.5)
     mem = psutil.virtual_memory()
     mem_usage = f"{mem.percent}% ({mem.used // (1024**2)}MB / {mem.total // (1024**2)}MB)"
 
-    # --- 2️⃣ Get X-UI DB info ---
     db_path = cfg.get("db_path", "/etc/x-ui/x-ui.db")
     total_inbounds = total_clients = 0
-
     if os.path.exists(db_path):
         try:
             conn = sqlite3.connect(db_path)
@@ -120,7 +157,6 @@ async def status_handler(message: types.Message):
             total_inbounds, total_clients = 0, 0
             logging.error(f"DB check failed: {e}")
 
-    # --- 3️⃣ Get uptime of bot process ---
     process_uptime = "N/A"
     try:
         proc = psutil.Process(os.getpid())
@@ -128,7 +164,6 @@ async def status_handler(message: types.Message):
     except Exception:
         pass
 
-    # --- 4️⃣ Build status message ---
     status_msg = (
         f"📊 **XUI Server Status**\n\n"
         f"🟢 *Bot Status:* Online\n"
@@ -152,7 +187,8 @@ async def help_handler(message: types.Message):
         "/start - Show the main menu\n"
         "/system - Check bot/server status\n"
         "/whoami - Show your Telegram ID\n"
-        "/account <email> - check a user (admin only)\n\n"
+        "/account <email> - Check a user (admin only)\n"
+        "/stop <email> <time> - Temporarily stop a user (e.g., 30m, 2h, 1d)\n\n"
         "Example:\n`/account alice@example.com`",
         parse_mode="Markdown"
     )
@@ -162,8 +198,6 @@ async def help_handler(message: types.Message):
 async def id_handler(message: types.Message):
     """Show your Telegram ID"""
     await message.reply(f"🆔 Your Telegram ID: `{message.from_user.id}`", parse_mode="Markdown")
-
-
 
 # =========================== 
 # BUTTON HANDLERS (Enable/Disable)
@@ -181,40 +215,20 @@ async def actions(query: types.CallbackQuery):
             scheduler.remove_job(job.id)
             logging.info(f"[SCHEDULER] Removed old job for {email}")
 
-    # --- ACTION: ENABLE USER ---
     if action == "enable":
         result = toggle_user(email, True)
-
         if not result:
-            logging.warning(f"account {email} not found.")
-            await query.message.edit_text(
-                f"⚠️ `{email}` not found in database — cannot On.",
-                parse_mode="Markdown"
-            )
-            return
-
-        logging.info(f"[MANUAL ENABLE] {email} access restored by admin {admin_id}")
-        await query.message.edit_text(
-            f"🔓 `{email}` has been *manually access restored* ✅",
-            parse_mode="Markdown"
-        )
+            return await query.message.edit_text(f"⚠️ `{email}` not found.", parse_mode="Markdown")
+        logging.info(f"[MANUAL ENABLE] {email} restored by admin {admin_id}")
+        await query.message.edit_text(f"🔓 `{email}` manually restored ✅", parse_mode="Markdown")
         return
 
-    # --- ACTION: DISABLE USER ---
     elif action == "disable":
         result = toggle_user(email, False)
-
         if not result:
-            logging.warning(f"account {email} not found.")
-            await query.message.edit_text(
-                f"⚠️ `{email}` not found in database — cannot Off.",
-                parse_mode="Markdown"
-            )
-            return
+            return await query.message.edit_text(f"⚠️ `{email}` not found.", parse_mode="Markdown")
 
-        logging.info(f"[TEMP DISABLE] {email} Off by admin {admin_id}")
-
-        # Schedule re-enable job (24h)
+        logging.info(f"[TEMP DISABLE] {email} disabled by admin {admin_id}")
         run_time = datetime.now() + timedelta(hours=24)
         scheduler.add_job(
             toggle_user,
@@ -226,11 +240,9 @@ async def actions(query: types.CallbackQuery):
             misfire_grace_time=3600,
             name=f"AutoReEnable_{email}"
         )
-        logging.info(f"[SCHEDULER] A access restored for {email}  at {run_time}")
-
         await query.message.edit_text(
-            f"🚫 `{email}` Off for 24 .\n\n"
-            f"🕒 A access for *{run_time.strftime('%Y-%m-%d %H:%M:%S')}*.",
+            f"🚫 `{email}` disabled for 24h.\n"
+            f"🕒 Access restores at `{run_time.strftime('%Y-%m-%d %H:%M:%S')}`.",
             parse_mode="Markdown"
         )
 
@@ -239,10 +251,11 @@ async def set_bot_commands(bot: Bot):
     """Register visible commands for Telegram's sidebar menu"""
     commands = [
         types.BotCommand(command="start", description="Show the main menu"),
-        types.BotCommand(command="help", description="Bot help and usage guide"),
-        types.BotCommand(command="system", description="Check bot/server status"),
+        types.BotCommand(command="help", description="Help and usage guide"),
+        types.BotCommand(command="system", description="Check system status"),
         types.BotCommand(command="whoami", description="Show your Telegram ID"),
-        types.BotCommand(command="account", description="M-U (admin only)"),
+        types.BotCommand(command="account", description="Manage a user (admin only)"),
+        types.BotCommand(command="stop", description="Temporarily stop a user"),
     ]
     await bot.set_my_commands(commands)
 
@@ -255,8 +268,11 @@ async def main():
     logging.info("🚀 XUI Telegram Bot starting...")
     scheduler.start()
     logging.info("Scheduler started")
-    await set_bot_commands(bot)  # 👈 This line registers the command list
-    logging.info("Bot commands registered")
+
+    for job in scheduler.get_jobs():
+        logging.info(f"[JOB RESTORE] Loaded {job.id} scheduled for {job.next_run_time}")
+
+    await set_bot_commands(bot)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
